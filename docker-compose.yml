@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: collectflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: collectflow_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Java Spring Boot / Tomcat Enterprise Payment Backend
+  backend-java:
+    build:
+      context: ./backend-java
+      dockerfile: Dockerfile
+    container_name: collectflow-backend-java
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/collectflow_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgrespassword
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-sk_test_placeholder}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-whsec_placeholder}
+    ports:
+      - "8080:8080"
+
+  # 3. Next.js App Router Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: collectflow-frontend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - backend-java
+    environment:
+      DATABASE_URL: postgresql://postgres:postgrespassword@postgres:5432/collectflow_db
+      DIRECT_URL: postgresql://postgres:postgrespassword@postgres:5432/collectflow_db
+      NEXTAUTH_SECRET: local_docker_secret_key_32_characters_long
+      NEXT_PUBLIC_APP_URL: http://localhost
+    ports:
+      - "3000:3000"
+
+  # 4. Nginx Reverse Proxy (Unified Port 80 Gateway)
+  nginx:
+    image: nginx:alpine
+    container_name: collectflow-nginx
+    restart: unless-stopped
+    depends_on:
+      - frontend
+      - backend-java
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx-docker.conf:/etc/nginx/nginx.conf:ro
+
+volumes:
+  postgres_data:
