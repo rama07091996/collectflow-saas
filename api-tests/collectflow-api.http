@@ -1,0 +1,222 @@
+### ==============================================================================
+### CollectFlow B2B SaaS REST API Test Suite
+### Compatible with VS Code REST Client, IntelliJ HTTP Client, & Postman
+### ==============================================================================
+
+@baseUrl = http://localhost:3000
+@nginxUrl = http://localhost
+@javaBackendUrl = http://localhost:8080/api/v1
+
+### -------------------------------------------------------------
+### 1. DASHBOARD & FINANCIAL ANALYTICS
+### -------------------------------------------------------------
+
+### GET Aggregated Dashboard Stats & Aging Buckets
+GET {{baseUrl}}/api/dashboard/stats
+Content-Type: application/json
+
+###
+
+### GET Legacy Analytics Metrics
+GET {{baseUrl}}/api/analytics
+Content-Type: application/json
+
+
+### -------------------------------------------------------------
+### 2. INVOICE & DEBTOR ITEMS (PAGINATION, FILTERING, SEARCH)
+### -------------------------------------------------------------
+
+### GET Paginated Invoices (Page 1, Limit 5)
+GET {{baseUrl}}/api/items?page=1&limit=5
+Content-Type: application/json
+
+###
+
+### GET Filter Invoices by OVERDUE Status
+GET {{baseUrl}}/api/items?status=OVERDUE&limit=10
+Content-Type: application/json
+
+###
+
+### GET Search Invoices by Debtor Company Name
+GET {{baseUrl}}/api/items?search=Nova
+Content-Type: application/json
+
+###
+
+### GET Invoices List with Customer Dossiers
+GET {{baseUrl}}/api/invoices
+Content-Type: application/json
+
+###
+
+### POST Create a New Invoice Record
+POST {{baseUrl}}/api/items
+Content-Type: application/json
+
+{
+  "customerId": "cust_01",
+  "invoiceNumber": "INV-2024-9988",
+  "amount": 7500,
+  "dueDate": "2026-10-15T00:00:00.000Z",
+  "notes": "Enterprise Cloud Architecture Consulting Q3",
+  "items": [
+    {
+      "description": "Cloud Security Assessment",
+      "quantity": 1,
+      "unitPrice": 4500,
+      "amount": 4500
+    },
+    {
+      "description": "Kubernetes Deployment Setup",
+      "quantity": 1,
+      "unitPrice": 3000,
+      "amount": 3000
+    }
+  ]
+}
+
+
+### -------------------------------------------------------------
+### 3. WORKFLOW ACTION TRIGGERS & CADENCE CONTROLLER
+### -------------------------------------------------------------
+
+### POST Action: Nudge All Overdue Debtors
+POST {{baseUrl}}/api/actions/trigger
+Content-Type: application/json
+
+{
+  "actionType": "NUDGE_ALL_OVERDUE",
+  "channel": "ALL"
+}
+
+###
+
+### POST Action: Apply 1.5% Late Fee to Delinquent Invoice
+POST {{baseUrl}}/api/actions/trigger
+Content-Type: application/json
+
+{
+  "actionType": "APPLY_LATE_FEE",
+  "invoiceId": "inv_03"
+}
+
+###
+
+### POST Action: Pause Cadence (Mark IN_DISPUTE)
+POST {{baseUrl}}/api/actions/trigger
+Content-Type: application/json
+
+{
+  "actionType": "PAUSE_CADENCE",
+  "invoiceId": "inv_05"
+}
+
+###
+
+### POST Action: Escalate Delinquent Account
+POST {{baseUrl}}/api/actions/trigger
+Content-Type: application/json
+
+{
+  "actionType": "ESCALATE_DELINQUENT",
+  "invoiceId": "inv_07"
+}
+
+
+### -------------------------------------------------------------
+### 4. AI AR COPILOT & AUTONOMOUS AUTO-PILOT DUNNING
+### -------------------------------------------------------------
+
+### POST AI Copilot Query: Who Owes the Most?
+POST {{baseUrl}}/api/ai/chat
+Content-Type: application/json
+
+{
+  "prompt": "Who owes us the most money right now?"
+}
+
+###
+
+### POST AI Copilot Query: Draft Follow-Up Reminder Email
+POST {{baseUrl}}/api/ai/chat
+Content-Type: application/json
+
+{
+  "prompt": "Draft an urgent follow-up email for Apex Logistics"
+}
+
+###
+
+### POST AI Copilot Query: Cashflow Forecast
+POST {{baseUrl}}/api/ai/chat
+Content-Type: application/json
+
+{
+  "prompt": "What is our cash collection forecast and DSO for this month?"
+}
+
+###
+
+### POST Trigger Autonomous Auto-Pilot Dunning Engine
+POST {{baseUrl}}/api/ai/autopilot
+Content-Type: application/json
+
+
+### -------------------------------------------------------------
+### 5. DEVOPS RESILIENCE & ANTIGRAVITY SELF-HEALING
+### -------------------------------------------------------------
+
+### POST Antigravity Self-Healing Webhook (Diagnose Error)
+POST {{baseUrl}}/api/antigravity/heal-webhook
+Content-Type: application/json
+
+{
+  "commitSha": "e4f8a129d",
+  "repository": "rama07091996/collectflow-saas",
+  "environment": "production",
+  "errorLog": "Error: Prisma schema validation - (get-dmmf wasm)\nError code: P1012\nerror: Error validating: The argument `references` must refer only to existing fields in the related model `Workflow`. The following fields do not exist in the related model: workflowId\n--> prisma/schema.prisma:210",
+  "targetEmail": "admin@collectflow.io"
+}
+
+
+### -------------------------------------------------------------
+### 6. JAVA SPRING BOOT & STRIPE PAYMENT GATEWAY (/api/v1/)
+### -------------------------------------------------------------
+
+### POST Create Stripe 1-Click Checkout Session (Direct or via Nginx)
+POST {{javaBackendUrl}}/payments/create-checkout-session
+Content-Type: application/json
+
+{
+  "invoiceId": "inv_01",
+  "invoiceNumber": "INV-2024-001",
+  "amount": 4200.00,
+  "currency": "USD",
+  "customerEmail": "accounts@novalabs.bio",
+  "customerName": "Nova Labs BioTech",
+  "description": "Full settlement for Invoice INV-2024-001"
+}
+
+###
+
+### POST Stripe Webhook Signature Verification Test
+POST {{javaBackendUrl}}/payments/webhook
+Content-Type: application/json
+Stripe-Signature: t=1614552000,v1=5257a869e7ecebeda32affa62cd493d8323600b7431e3e21937ecd8e62730033
+
+{
+  "id": "evt_test_webhook_001",
+  "type": "checkout.session.completed",
+  "data": {
+    "object": {
+      "id": "cs_test_123",
+      "amount_total": 420000,
+      "currency": "usd",
+      "metadata": {
+        "invoiceId": "inv_01",
+        "invoiceNumber": "INV-2024-001"
+      }
+    }
+  }
+}

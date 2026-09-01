@@ -1,0 +1,186 @@
+{
+  "info": {
+    "name": "CollectFlow B2B SaaS API Collection",
+    "_postman_id": "712b4192-72c0-49a1-a692-7e16cbc066fd",
+    "description": "Complete API test collection for CollectFlow Next.js APIs, AI Copilot, Action Triggers, and Java Stripe Payments.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "javaBaseUrl",
+      "value": "http://localhost:8080/api/v1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Analytics & Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Stats & Aging",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard", "stats"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response contains valid financial data', function () {",
+                  "    var json = pm.response.json();",
+                  "    pm.expect(json.success).to.be.true;",
+                  "    pm.expect(json.data.totalInvoiced).to.be.above(0);",
+                  "    pm.expect(json.data.agingBuckets).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Invoices & Debtors",
+      "item": [
+        {
+          "name": "Get Paginated Invoices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/items?page=1&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Invoice Record",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"cust_01\",\n  \"amount\": 6200,\n  \"dueDate\": \"2026-10-30T00:00:00.000Z\",\n  \"notes\": \"Postman API Test Invoice\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "items"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Workflow Action Triggers",
+      "item": [
+        {
+          "name": "Nudge All Overdue Debtors",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actionType\": \"NUDGE_ALL_OVERDUE\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/actions/trigger",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actions", "trigger"]
+            }
+          }
+        },
+        {
+          "name": "Apply Late Assessment Fee",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actionType\": \"APPLY_LATE_FEE\",\n  \"invoiceId\": \"inv_03\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/actions/trigger",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "actions", "trigger"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. AI Copilot & Autonomous Dunning",
+      "item": [
+        {
+          "name": "AI Copilot Query",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"Who owes us the most money right now?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/chat",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "chat"]
+            }
+          }
+        },
+        {
+          "name": "Trigger Autonomous AutoPilot",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/autopilot",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "ai", "autopilot"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Java Stripe Payments (/api/v1/)",
+      "item": [
+        {
+          "name": "Create Stripe Checkout Session",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceId\": \"inv_01\",\n  \"invoiceNumber\": \"INV-2024-001\",\n  \"amount\": 4200.00,\n  \"customerEmail\": \"accounts@novalabs.bio\"\n}"
+            },
+            "url": {
+              "raw": "{{javaBaseUrl}}/payments/create-checkout-session",
+              "host": ["{{javaBaseUrl}}"],
+              "path": ["payments", "create-checkout-session"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
