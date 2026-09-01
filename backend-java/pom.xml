@@ -15,7 +15,7 @@
     <artifactId>collectflow-backend-java</artifactId>
     <version>1.0.0</version>
     <name>collectflow-backend-java</name>
-    <description>Enterprise Fintech, Multi-Gateway Payments & AR Dunning Engine for CollectFlow</description>
+    <description>Enterprise Fintech, Multi-Gateway Payments and AR Dunning Engine for CollectFlow</description>
 
     <properties>
         <java.version>17</java.version>

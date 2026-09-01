@@ -9,7 +9,7 @@
     <version>1.0.0</version>
     <packaging>pom</packaging>
     <name>collectflow-parent</name>
-    <description>Unified Maven Parent Project for CollectFlow Frontend & Java Backend</description>
+    <description>Unified Maven Parent Project for CollectFlow Frontend and Java Backend</description>
 
     <modules>
         <module>backend-java</module>
