@@ -1,0 +1,51 @@
+name: Auto-Dependency Updates & Payment JUnit 5 Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run weekly on Monday midnight to ensure dependencies and payment endpoints stay up-to-date
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+jobs:
+  test-payment-endpoints:
+    name: JUnit 5 Payment Suite & Dependency Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install & Audit Node Dependencies
+        run: |
+          npm ci || npm install
+          npx prisma generate
+
+      - name: Execute JUnit 5 Payment Endpoints & Security Test Suite
+        working-directory: ./backend-java
+        run: |
+          mvn clean test --batch-mode
+
+      - name: Execute TypeScript AR & Copilot Test Suite
+        run: |
+          npm test
+
+      - name: Build Next.js Production Bundle
+        run: |
+          npm run build

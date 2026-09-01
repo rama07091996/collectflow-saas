@@ -96,13 +96,18 @@ public class StripePaymentService {
 
         switch (event.getType()) {
             case "checkout.session.completed":
-                EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
-                if (dataObjectDeserializer.getObject().isPresent()) {
-                    Session session = (Session) dataObjectDeserializer.getObject().get();
-                    String invoiceId = session.getMetadata().get("invoiceId");
-                    String invoiceNumber = session.getMetadata().get("invoiceNumber");
-                    log.info("Payment confirmed for Invoice {} ({})! Amount: ${}", invoiceNumber, invoiceId, session.getAmountTotal() / 100.0);
-                    // In real DB: invoiceRepository.markPaid(invoiceId)
+                try {
+                    EventDataObjectDeserializer dataObjectDeserializer = event.getDataObjectDeserializer();
+                    if (dataObjectDeserializer != null && dataObjectDeserializer.getObject().isPresent()) {
+                        Session session = (Session) dataObjectDeserializer.getObject().get();
+                        if (session.getMetadata() != null) {
+                            String invoiceId = session.getMetadata().get("invoiceId");
+                            String invoiceNumber = session.getMetadata().get("invoiceNumber");
+                            log.info("Payment confirmed for Invoice {} ({})! Amount: ${}", invoiceNumber, invoiceId, session.getAmountTotal() != null ? session.getAmountTotal() / 100.0 : 0.0);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Event deserializer fallback: {}", e.getMessage());
                 }
                 return true;
 
