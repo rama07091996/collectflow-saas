@@ -39,3 +39,8 @@ yarn-error.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Maven Build Artifacts
+target/
+**/target/
+.m2/
