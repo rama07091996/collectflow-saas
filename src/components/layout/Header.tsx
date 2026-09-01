@@ -11,11 +11,12 @@ import {
   ChevronDown,
   Building2,
   CheckCircle,
+  LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
 export function Header() {
-  const { currentUser, allUsers, currentOrg, switchUser } = useAuth();
+  const { currentUser, allUsers, currentOrg, switchUser, logout } = useAuth();
   const { toast } = useToast();
   const [isResetting, setIsResetting] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -127,6 +128,21 @@ export function Header() {
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Log Out Action */}
+              <div className="mt-2 pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    toast('Logging out of CollectFlow workspace...', 'info');
+                    logout();
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Log Out of Account</span>
+                </button>
               </div>
             </div>
           )}

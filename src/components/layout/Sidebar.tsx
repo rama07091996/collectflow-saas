@@ -13,8 +13,10 @@ import {
   TrendingUp,
   Sparkles,
   ArrowUpRight,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/lib/mock-auth';
 
 interface NavItem {
   label: string;
@@ -34,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { logout } = useAuth();
 
   return (
     <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 shrink-0 select-none">
@@ -113,16 +116,26 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Footer System Status */}
-      <div className="p-4 border-t border-slate-800 bg-slate-950/30 flex items-center justify-between text-xs text-slate-400">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Webhook Engine Active</span>
+      {/* Footer System Status & Logout */}
+      <div className="p-3 border-t border-slate-800 bg-slate-950/40 space-y-2">
+        <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[11px]">Webhook Engine</span>
+          </div>
+          <Link href="/" className="hover:text-slate-200 flex items-center gap-1 text-[11px]">
+            <span>Home</span>
+            <ArrowUpRight className="w-3 h-3" />
+          </Link>
         </div>
-        <Link href="/" className="hover:text-slate-200 flex items-center gap-1">
-          <span>Home</span>
-          <ArrowUpRight className="w-3 h-3" />
-        </Link>
+
+        <button
+          onClick={() => logout()}
+          className="w-full flex items-center justify-center gap-2 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 border border-slate-800 hover:border-rose-900/50 transition-all"
+        >
+          <LogOut className="w-3.5 h-3.5" />
+          <span>Log Out</span>
+        </button>
       </div>
     </aside>
   );
