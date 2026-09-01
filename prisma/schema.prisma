@@ -207,7 +207,7 @@ model Workflow {
 model WorkflowStep {
   id              String        @id @default(cuid())
   workflowId      String
-  workflow        Workflow      @relation(fields: [workflowId], references: [workflowId], onDelete: Cascade)
+  workflow        Workflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
   stepOrder       Int
   timing          TriggerTiming
   offsetDays      Int           // Negative for before due (e.g. -3), 0 for due date, positive for overdue (e.g. 7, 14)
