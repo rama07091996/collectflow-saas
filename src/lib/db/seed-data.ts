@@ -2,10 +2,18 @@ import { Customer, Invoice, Workflow, Integration, User } from '../types';
 
 export const SEED_USERS: User[] = [
   {
+    id: 'usr_00',
+    email: 'ramamkrishna.anandrk@gmail.com',
+    name: 'Ramakrishna Anand',
+    role: 'OWNER',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    organizationId: 'org_apex',
+  },
+  {
     id: 'usr_01',
     email: 'sarah.jenkins@apexmedia.io',
     name: 'Sarah Jenkins',
-    role: 'OWNER',
+    role: 'FINANCE_MANAGER',
     avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
     organizationId: 'org_apex',
   },
@@ -13,7 +21,7 @@ export const SEED_USERS: User[] = [
     id: 'usr_02',
     email: 'marcus.vance@apexmedia.io',
     name: 'Marcus Vance',
-    role: 'FINANCE_MANAGER',
+    role: 'COLLECTIONS_SPECIALIST',
     avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
     organizationId: 'org_apex',
   },
@@ -21,7 +29,7 @@ export const SEED_USERS: User[] = [
     id: 'usr_03',
     email: 'elena.gomez@apexmedia.io',
     name: 'Elena Gomez',
-    role: 'COLLECTIONS_SPECIALIST',
+    role: 'VIEWER',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     organizationId: 'org_apex',
   },

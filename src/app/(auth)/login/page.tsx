@@ -28,8 +28,8 @@ export default function LoginPage() {
   const { allUsers, switchUser, twoFactorConfig } = useAuth();
   const { toast } = useToast();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('ramamkrishna.anandrk@gmail.com');
+  const [password, setPassword] = useState('Rama@0709');
   const [isLoading, setIsLoading] = useState(false);
 
   // 2FA Flow State

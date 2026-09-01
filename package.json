@@ -7,7 +7,7 @@
     "build": "npx prisma generate && npx next build",
     "start": "npx next start",
     "lint": "npx next lint",
-    "test": "npx ts-node tests/run-all-tests.ts",
+    "test": "node tests/run-tests.js",
     "generate:api-tests": "node scripts/generate-endpoint-tests.js",
     "postinstall": "npx prisma generate",
     "db:push": "prisma db push",
