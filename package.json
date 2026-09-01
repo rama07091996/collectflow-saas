@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "npx ts-node tests/run-all-tests.ts",
+    "generate:api-tests": "node scripts/generate-endpoint-tests.js",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "ts-node prisma/seed.ts"
