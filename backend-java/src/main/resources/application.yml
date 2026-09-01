@@ -1,0 +1,36 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+spring:
+  application:
+    name: collectflow-enterprise-payments
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/collectflow_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 30000
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+# Payment Gateway Configuration (Stripe)
+stripe:
+  api-key: ${STRIPE_SECRET_KEY:sk_test_placeholder_key}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder_secret}
+  success-url: ${FRONTEND_URL:http://localhost:3000}/invoices?payment_success=true
+  cancel-url: ${FRONTEND_URL:http://localhost:3000}/invoices?payment_cancelled=true
+
+# Security JWT configuration
+security:
+  jwt:
+    secret: ${JWT_SECRET:collectflow_super_secret_enterprise_security_key_32_chars_long!}
+    expiration-ms: 86400000 # 24 hours
