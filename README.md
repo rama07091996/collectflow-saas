@@ -14,6 +14,36 @@ CollectFlow is a production-grade B2B SaaS web application designed for US SMBs 
 
 ---
 
+## Multi-Cloud Deployment Options (Deploy to Any Cloud in 5 Minutes)
+
+CollectFlow is cloud-agnostic and container-ready. You can deploy it to any cloud provider:
+
+| Cloud Platform | Runtime Type | Recommended Database | Deployment Command / Link |
+|---|---|---|---|
+| **Vercel** (Recommended) | Next.js Serverless Functions | Neon / Supabase Postgres | `vercel` / [vercel.com/new](https://vercel.com/new) |
+| **Railway** | Full-stack Container / Node | Railway Managed Postgres | `railway up` / [railway.app](https://railway.app) |
+| **Render** | Docker / Node Web Service | Render PostgreSQL | [dashboard.render.com](https://dashboard.render.com) |
+| **Fly.io** | Global MicroVM Container | Fly Postgres | `fly launch` / `fly deploy` |
+| **AWS Amplify / ECS** | Docker / Node.js 18+ | AWS RDS PostgreSQL / Aurora | `amplify push` |
+| **Google Cloud Run** | Serverless Container | Cloud SQL PostgreSQL | `gcloud run deploy` |
+| **Azure App Service** | Linux Node.js Container | Azure Database for PostgreSQL | `az webapp up` |
+
+---
+
+## Key Newly Added Features
+
+1. **Authentication & Sign-In (`/login`, `/register`)**:
+   - Multi-persona 1-click Demo Login (Agency Owner, Finance Manager, Collections Specialist).
+   - Google OAuth & GitHub SSO buttons.
+   - Passwordless email magic link input.
+   - Accessible from the Marketing Navbar, Hero CTA, and workspace header.
+
+2. **Debtor & Contact Directory Aggregator (`/customers`)**:
+   - Unified directory aggregating billing emails, Accounts Payable (AP) leads, phone numbers, addresses, and websites across Stripe, QuickBooks, and Xero.
+   - Filter by Risk Level (`Low`, `Medium`, `High`, `Critical`) and Source Integration.
+   - **1-Click Share Contact Details**: Export vCard (`.vcf`), copy formatted contact card, share via WhatsApp, or share via Email.
+   - **Export All Contacts (CSV)** for CRM / ERP syncing.
+
 ---
 
 ## REST API Endpoints & Mock Database Engine

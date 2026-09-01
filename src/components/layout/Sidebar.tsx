@@ -26,6 +26,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Invoices & Debtors', href: '/invoices', icon: Receipt, badge: '3 Overdue' },
+  { label: 'Debtor Contacts Directory', href: '/customers', icon: ShieldCheck, badge: '15 Contacts' },
   { label: 'AR Follow-Up Cadence', href: '/workflows', icon: GitBranch },
   { label: 'Integrations & Sync', href: '/integrations', icon: Layers, badge: 'Live' },
   { label: 'Settings', href: '/settings', icon: Settings },

@@ -37,16 +37,25 @@ export function Navbar() {
 
         {/* Action CTAs */}
         <div className="flex items-center gap-3">
+          <Link href="/login">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs font-semibold text-slate-700 hover:text-slate-900"
+            >
+              Log In
+            </Button>
+          </Link>
           <Link href="/dashboard">
             <Button
               variant="outline"
               size="sm"
-              className="text-xs font-semibold text-slate-700 hover:text-slate-900 border-slate-300"
+              className="text-xs font-semibold text-slate-700 hover:text-slate-900 border-slate-300 hidden sm:inline-flex"
             >
               Live Demo App
             </Button>
           </Link>
-          <Link href="/dashboard">
+          <Link href="/register">
             <Button
               variant="primary"
               size="sm"

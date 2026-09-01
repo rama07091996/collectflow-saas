@@ -50,6 +50,10 @@ export interface Customer {
   email: string;
   phone?: string;
   address?: string;
+  website?: string;
+  apContactName?: string;
+  apEmail?: string;
+  sourceProvider?: IntegrationProvider | 'MANUAL';
   creditLimit: number;
   paymentTermsDays: number;
   riskScore: number; // 0 - 100
