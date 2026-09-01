@@ -1,0 +1,241 @@
+// CollectFlow Prisma Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  OWNER
+  FINANCE_MANAGER
+  COLLECTIONS_SPECIALIST
+  VIEWER
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  ESCALATED
+  IN_DISPUTE
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CommType {
+  EMAIL
+  SMS
+  WHATSAPP
+  PHONE_LOG
+  ESCALATION_LETTER
+}
+
+enum CommStatus {
+  QUEUED
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  FAILED
+}
+
+enum IntegrationProvider {
+  STRIPE
+  QUICKBOOKS
+  XERO
+  FRESHBOOKS
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  SYNCING
+  ERROR
+}
+
+enum TriggerTiming {
+  BEFORE_DUE
+  ON_DUE
+  AFTER_DUE
+  ESCALATION
+}
+
+model Organization {
+  id               String           @id @default(cuid())
+  name             String
+  slug             String           @unique
+  currency         String           @default("USD")
+  timezone         String           @default("America/New_York")
+  taxId            String?
+  logoUrl          String?
+  stripeConnectId  String?
+  qboRealmId       String?
+  users            User[]
+  customers        Customer[]
+  invoices         Invoice[]
+  workflows        Workflow[]
+  integrations     Integration[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  name           String
+  role           UserRole      @default(FINANCE_MANAGER)
+  avatarUrl      String?
+  organizationId String
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Customer {
+  id                String             @id @default(cuid())
+  organizationId    String
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name              String
+  companyName       String
+  email             String
+  phone             String?
+  address           String?
+  creditLimit       Float              @default(10000.0)
+  paymentTermsDays  Int                @default(30)
+  riskScore         Int                @default(15) // 0-100 score
+  riskLevel         RiskLevel          @default(LOW)
+  totalOutstanding  Float              @default(0.0)
+  totalPaid         Float              @default(0.0)
+  invoices          Invoice[]
+  communications    CommunicationLog[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+model Invoice {
+  id                 String             @id @default(cuid())
+  organizationId     String
+  organization       Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customerId         String
+  customer           Customer           @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  invoiceNumber      String             @unique
+  amount             Float
+  amountPaid         Float              @default(0.0)
+  amountDue          Float
+  currency           String             @default("USD")
+  issueDate          DateTime
+  dueDate            DateTime
+  paidDate           DateTime?
+  status             InvoiceStatus      @default(SENT)
+  paymentLinkUrl     String
+  pdfUrl             String?
+  notes              String?
+  remindersSentCount Int                @default(0)
+  lastReminderAt     DateTime?
+  items              InvoiceItem[]
+  communications     CommunicationLog[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([organizationId])
+  @@index([customerId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Float
+  amount      Float
+}
+
+model CommunicationLog {
+  id             String       @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  customerId     String
+  customer       Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  type           CommType     @default(EMAIL)
+  subject        String
+  body           String
+  channel        String       @default("email")
+  status         CommStatus   @default(DELIVERED)
+  sentAt         DateTime     @default(now())
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  metadataJson   String?
+
+  @@index([invoiceId])
+  @@index([customerId])
+}
+
+model Workflow {
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  description    String?
+  isActive       Boolean        @default(true)
+  isDefault      Boolean        @default(false)
+  steps          WorkflowStep[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([organizationId])
+}
+
+model WorkflowStep {
+  id              String        @id @default(cuid())
+  workflowId      String
+  workflow        Workflow      @relation(fields: [workflowId], references: [workflowId], onDelete: Cascade)
+  stepOrder       Int
+  timing          TriggerTiming
+  offsetDays      Int           // Negative for before due (e.g. -3), 0 for due date, positive for overdue (e.g. 7, 14)
+  channel         String        @default("EMAIL") // EMAIL, SMS, ESCALATION
+  templateSubject String
+  templateBody    String
+  isAutomated     Boolean       @default(true)
+  requireApproval Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([workflowId])
+}
+
+model Integration {
+  id             String              @id @default(cuid())
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  provider       IntegrationProvider
+  status         IntegrationStatus   @default(DISCONNECTED)
+  externalId     String?
+  accountName    String?
+  lastSyncAt     DateTime?
+  syncFrequency  String              @default("HOURLY")
+  syncLog        String?
+  configJson     String?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([organizationId, provider])
+}
