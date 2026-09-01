@@ -155,43 +155,45 @@ export interface PaginationMeta {
   hasPrevPage: boolean;
 }
 
+export interface DashboardMetrics {
+  totalInvoiced: number;
+  totalOutstanding: number;
+  totalOverdue: number;
+  totalPaidThisMonth: number;
+  totalInDispute: number;
+  averageDaysToPay: number;
+  collectionEfficiencyIndex: number;
+  invoicesCount: {
+    total: number;
+    overdue: number;
+    escalated: number;
+    inDispute: number;
+    partiallyPaid: number;
+    sent: number;
+    viewed: number;
+    paid: number;
+    draft: number;
+  };
+  overdueTrendPercent: number;
+  paidTrendPercent: number;
+  agingBuckets: {
+    current: number;
+    days1To15: number;
+    days16To30: number;
+    days31To60: number;
+    days60Plus: number;
+  };
+  monthlyCashflow: {
+    month: string;
+    collected: number;
+    invoiced: number;
+    projected: number;
+  }[];
+}
+
 export interface DashboardStatsResponse {
   success: boolean;
-  data: {
-    totalInvoiced: number;
-    totalOutstanding: number;
-    totalOverdue: number;
-    totalPaidThisMonth: number;
-    totalInDispute: number;
-    averageDaysToPay: number;
-    collectionEfficiencyIndex: number;
-    invoicesCount: {
-      total: number;
-      overdue: number;
-      escalated: number;
-      inDispute: number;
-      partiallyPaid: number;
-      sent: number;
-      viewed: number;
-      paid: number;
-      draft: number;
-    };
-    overdueTrendPercent: number;
-    paidTrendPercent: number;
-    agingBuckets: {
-      current: number;
-      days1To15: number;
-      days16To30: number;
-      days31To60: number;
-      days60Plus: number;
-    };
-    monthlyCashflow: {
-      month: string;
-      collected: number;
-      invoiced: number;
-      projected: number;
-    }[];
-  };
+  data: DashboardMetrics;
 }
 
 export interface GetItemsQueryParams {
