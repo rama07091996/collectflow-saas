@@ -173,16 +173,25 @@ class CollectFlowStore {
       daysOverdue: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      items: data.items || [
-        {
-          id: `item_${Date.now()}`,
-          invoiceId: id,
-          description: data.notes || 'Professional Marketing & Tech Services',
-          quantity: 1,
-          unitPrice: amount,
-          amount: amount,
-        },
-      ],
+      items: data.items
+        ? data.items.map((item: any, idx: number) => ({
+            id: item.id || `item_${id}_${idx + 1}`,
+            invoiceId: id,
+            description: item.description || 'Invoice Item',
+            quantity: Number(item.quantity) || 1,
+            unitPrice: Number(item.unitPrice) || amount,
+            amount: Number(item.amount) || ((Number(item.quantity) || 1) * (Number(item.unitPrice) || amount)),
+          }))
+        : [
+            {
+              id: `item_${Date.now()}`,
+              invoiceId: id,
+              description: data.notes || 'Professional Marketing & Tech Services',
+              quantity: 1,
+              unitPrice: amount,
+              amount: amount,
+            },
+          ],
       communications: [
         {
           id: `comm_${Date.now()}`,
