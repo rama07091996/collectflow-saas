@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { DashboardMetrics, Customer } from '@/lib/types';
 import { MetricsCards } from '@/components/dashboard/MetricsCards';
+import { AutoPilotBanner } from '@/components/dashboard/AutoPilotBanner';
 import { AgingBreakdownChart } from '@/components/dashboard/AgingBreakdownChart';
 import { CashflowChart } from '@/components/dashboard/CashflowChart';
 import { QuickActions } from '@/components/dashboard/QuickActions';
@@ -67,6 +68,9 @@ export default function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {/* Autonomous AR Auto-Pilot Banner */}
+      <AutoPilotBanner onRefreshData={fetchData} />
 
       {/* Metrics Cards */}
       <MetricsCards metrics={metrics} />

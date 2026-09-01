@@ -3,6 +3,7 @@
 import React from 'react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
+import { AIChatWidget } from '@/components/ai/AIChatWidget';
 
 export default function DashboardLayout({
   children,
@@ -10,7 +11,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-slate-50 relative">
       {/* Persistent Sidebar */}
       <Sidebar />
 
@@ -21,6 +22,9 @@ export default function DashboardLayout({
           <div className="max-w-7xl mx-auto space-y-8">{children}</div>
         </main>
       </div>
+
+      {/* Floating AI AR Copilot Chatbot */}
+      <AIChatWidget />
     </div>
   );
 }
