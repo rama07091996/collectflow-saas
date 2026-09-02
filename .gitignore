@@ -44,3 +44,4 @@ yarn-error.log*
 target/
 **/target/
 .m2/
+.env*

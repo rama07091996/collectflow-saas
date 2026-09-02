@@ -8,6 +8,7 @@ import { AgingBreakdownChart } from '@/components/dashboard/AgingBreakdownChart'
 import { CashflowChart } from '@/components/dashboard/CashflowChart';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { RecentActivityFeed } from '@/components/dashboard/RecentActivityFeed';
+import { PlainDashboardSetup } from '@/components/dashboard/PlainDashboardSetup';
 import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal';
 import { Loader2 } from 'lucide-react';
 
@@ -55,6 +56,8 @@ export default function DashboardPage() {
     );
   }
 
+  const isPlainDashboard = metrics.invoicesCount.total === 0;
+
   return (
     <div className="space-y-8">
       {/* Top Banner / Welcome */}
@@ -69,8 +72,16 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Autonomous AR Auto-Pilot Banner */}
-      <AutoPilotBanner onRefreshData={fetchData} />
+      {/* If Plain Dashboard on a fresh account, render setup wizard card */}
+      {isPlainDashboard ? (
+        <PlainDashboardSetup
+          onOpenCreateInvoice={() => setIsCreateModalOpen(true)}
+          onRefreshData={fetchData}
+        />
+      ) : (
+        /* Autonomous AR Auto-Pilot Banner */
+        <AutoPilotBanner onRefreshData={fetchData} />
+      )}
 
       {/* Metrics Cards */}
       <MetricsCards metrics={metrics} />

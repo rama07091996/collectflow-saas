@@ -45,17 +45,18 @@ export default function LoginPage() {
 
     setTimeout(() => {
       setIsLoading(false);
-      // Trigger Step-up 2FA Multi-Factor Authentication
-      setSelectedUserFor2FA(allUsers[0]);
-      setIs2FAPrompt(true);
-      toast('Primary credentials verified. Please complete 2FA security step.', 'info');
-    }, 500);
+      // Directly log in without blocking on 2FA passcode
+      const matchedUser = allUsers.find((u) => u.email.toLowerCase() === email.toLowerCase()) || allUsers[0];
+      switchUser(matchedUser.id);
+      toast(`Signed in successfully as ${matchedUser.name}! Direct access granted.`, 'success');
+      router.push('/dashboard');
+    }, 400);
   };
 
   const handleQuickDemoSelect = (user: any) => {
-    setSelectedUserFor2FA(user);
-    setIs2FAPrompt(true);
-    toast(`Primary auth passed for ${user.name}. Two-factor challenge required.`, 'info');
+    switchUser(user.id);
+    toast(`Direct login active: Switched to ${user.name} (${user.role})`, 'success');
+    router.push('/dashboard');
   };
 
   const handleVerify2FA = (e: React.FormEvent) => {
@@ -69,16 +70,16 @@ export default function LoginPage() {
 
     setTimeout(() => {
       setIsLoading(false);
-      if (isValid || twoFactorCode === '123456' || twoFactorCode.length >= 6) {
+      if (isValid || twoFactorCode === '953590' || twoFactorCode === '123456' || twoFactorCode.length >= 6) {
         if (selectedUserFor2FA) {
           switchUser(selectedUserFor2FA.id);
         }
-        toast('Two-Factor Authentication successful. Session token generated!', 'success');
+        toast('Two-Factor Authentication passed. Session active!', 'success');
         router.push('/dashboard');
       } else {
-        toast('Invalid 2FA code. Enter a 6-digit code or backup code.', 'error');
+        toast('Invalid 2FA code. Enter passcode 953590 or backup code.', 'error');
       }
-    }, 600);
+    }, 400);
   };
 
   return (
@@ -338,9 +339,9 @@ export default function LoginPage() {
                     />
                     <span>Remember me</span>
                   </label>
-                  <a href="#" className="text-emerald-400 hover:text-emerald-300">
+                  <Link href="/forgot-password" className="text-emerald-400 hover:text-emerald-300">
                     Forgot password?
-                  </a>
+                  </Link>
                 </div>
 
                 <Button
@@ -350,7 +351,7 @@ export default function LoginPage() {
                   isLoading={isLoading}
                   className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs py-2.5 shadow-lg shadow-emerald-500/20"
                 >
-                  Continue to 2FA Verification
+                  Sign In to Workspace
                 </Button>
               </form>
 

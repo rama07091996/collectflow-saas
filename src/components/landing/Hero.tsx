@@ -38,14 +38,14 @@ export const Hero: React.FC = () => {
 
           {/* CTA Buttons */}
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/dashboard" className="w-full sm:w-auto">
+            <Link href="/register" className="w-full sm:w-auto">
               <Button
                 variant="primary"
                 size="lg"
                 rightIcon={<ArrowRight className="w-4 h-4" />}
                 className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 font-bold px-8 py-3.5 shadow-lg shadow-emerald-600/25"
               >
-                Start 14-Day Free Trial
+                Sign Up & Start Free Trial
               </Button>
             </Link>
             <Link href="/dashboard" className="w-full sm:w-auto">

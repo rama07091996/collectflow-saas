@@ -11,31 +11,187 @@ import {
   TriggerActionResponse,
   ExecutionLogEntry,
   DashboardStatsResponse,
+  User,
 } from '../types';
 import {
+  SEED_USERS,
   SEED_CUSTOMERS,
   SEED_INVOICES,
   SEED_INTEGRATIONS,
   SEED_WORKFLOW,
 } from './seed-data';
 import { calculateDaysOverdue, formatCurrency, formatDate } from '../utils';
+import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+
+const DB_FILE_PATH = path.join(process.cwd(), 'data', 'collectflow-db.json');
+
+export interface RegisteredAccountUser extends User {
+  companyName?: string;
+  plan?: '$100/User' | '$999/Organization';
+  status?: 'APPROVED' | 'PENDING_APPROVAL' | 'REJECTED';
+  password?: string;
+  createdAt?: string;
+}
 
 class CollectFlowStore {
+  private users: RegisteredAccountUser[] = [];
   private customers: Customer[] = [];
   private invoices: Invoice[] = [];
   private workflow: Workflow = { ...SEED_WORKFLOW };
   private integrations: Integration[] = [];
+  private passwordResetTokens: Map<string, { email: string; expiresAt: number }> = new Map();
 
   constructor() {
-    this.reset();
+    if (!this.loadFromDisk()) {
+      this.reset(true);
+    }
   }
 
-  public reset() {
+  public saveToDisk() {
+    try {
+      const dir = path.dirname(DB_FILE_PATH);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      const data = {
+        users: this.users,
+        customers: this.customers,
+        invoices: this.invoices,
+        workflow: this.workflow,
+        integrations: this.integrations,
+        passwordResetTokens: Array.from(this.passwordResetTokens.entries()),
+      };
+      fs.writeFileSync(DB_FILE_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      // Graceful fallback for non-writable environments
+    }
+  }
+
+  public loadFromDisk(): boolean {
+    try {
+      if (fs.existsSync(DB_FILE_PATH)) {
+        const raw = fs.readFileSync(DB_FILE_PATH, 'utf-8');
+        const parsed = JSON.parse(raw);
+        if (parsed.users && parsed.users.length > 0) this.users = parsed.users;
+        if (parsed.customers && parsed.customers.length > 0) this.customers = parsed.customers;
+        if (parsed.invoices && parsed.invoices.length > 0) this.invoices = parsed.invoices;
+        if (parsed.workflow) this.workflow = parsed.workflow;
+        if (parsed.integrations) this.integrations = parsed.integrations;
+        if (parsed.passwordResetTokens) {
+          this.passwordResetTokens = new Map(parsed.passwordResetTokens);
+        }
+        this.recalculateOverdue();
+        return true;
+      }
+    } catch (err) {
+      // Graceful fallback
+    }
+    return false;
+  }
+
+  public reset(forceSeed = false) {
+    this.users = JSON.parse(JSON.stringify(SEED_USERS)).map((u: User) => ({
+      ...u,
+      status: 'APPROVED',
+      plan: '$999/Organization',
+      createdAt: new Date().toISOString(),
+    }));
     this.customers = JSON.parse(JSON.stringify(SEED_CUSTOMERS));
     this.invoices = JSON.parse(JSON.stringify(SEED_INVOICES));
     this.workflow = JSON.parse(JSON.stringify(SEED_WORKFLOW));
     this.integrations = JSON.parse(JSON.stringify(SEED_INTEGRATIONS));
+    this.passwordResetTokens.clear();
     this.recalculateOverdue();
+    this.saveToDisk();
+  }
+
+  // -------------------------------------------------------------
+  // User Registration & Gated Admin Approval Flow
+  // -------------------------------------------------------------
+  public getUsers(): RegisteredAccountUser[] {
+    return this.users;
+  }
+
+  public registerUser(data: {
+    name: string;
+    email: string;
+    companyName: string;
+    password: string;
+    plan?: '$100/User' | '$999/Organization';
+  }): { user: RegisteredAccountUser; approvalToken: string } {
+    const existing = this.users.find((u) => u.email.toLowerCase() === data.email.toLowerCase());
+    if (existing) {
+      throw new Error(`An account with email '${data.email}' already exists.`);
+    }
+
+    const newUser: RegisteredAccountUser = {
+      id: `usr_${Date.now()}`,
+      name: data.name,
+      email: data.email.toLowerCase(),
+      companyName: data.companyName,
+      password: data.password,
+      role: 'FINANCE_MANAGER',
+      organizationId: 'org_apex',
+      avatarUrl: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
+      plan: data.plan || '$100/User',
+      status: 'PENDING_APPROVAL', // Gated until admin approval
+      createdAt: new Date().toISOString(),
+    };
+
+    this.users.push(newUser);
+    this.saveToDisk();
+
+    // Generate Admin Approval Token
+    const approvalToken = Buffer.from(
+      JSON.stringify({ userId: newUser.id, email: newUser.email, exp: Date.now() + 7 * 24 * 3600 * 1000 })
+    ).toString('base64url');
+
+    return { user: newUser, approvalToken };
+  }
+
+  public approveUser(userId: string): { success: boolean; user: RegisteredAccountUser } {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) throw new Error('User not found');
+
+    user.status = 'APPROVED';
+    this.saveToDisk();
+    return { success: true, user };
+  }
+
+  // -------------------------------------------------------------
+  // Password Reset Token Flow
+  // -------------------------------------------------------------
+  public createPasswordResetToken(email: string): { token: string; resetUrl: string } {
+    const user = this.users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) {
+      throw new Error(`No account found matching email '${email}'.`);
+    }
+
+    const token = crypto.randomBytes(24).toString('hex');
+    const expiresAt = Date.now() + 3600 * 1000; // 1 hour validity
+    this.passwordResetTokens.set(token, { email: user.email, expiresAt });
+    this.saveToDisk();
+
+    const resetUrl = `https://collectflow.io/reset-password?token=${token}`;
+    return { token, resetUrl };
+  }
+
+  public resetPassword(token: string, newPassword: string): { success: boolean; message: string } {
+    const record = this.passwordResetTokens.get(token);
+    if (!record || record.expiresAt < Date.now()) {
+      throw new Error('Password reset token is invalid or has expired (1 hour limit).');
+    }
+
+    const user = this.users.find((u) => u.email.toLowerCase() === record.email.toLowerCase());
+    if (!user) throw new Error('User account not found.');
+
+    user.password = newPassword;
+    this.passwordResetTokens.delete(token);
+    this.saveToDisk();
+
+    return { success: true, message: `Password for ${user.email} has been reset successfully.` };
   }
 
   private recalculateOverdue() {
@@ -47,7 +203,10 @@ class CollectFlowStore {
   // -------------------------------------------------------------
   // Customers
   // -------------------------------------------------------------
-  public getCustomers(): Customer[] {
+  public getCustomers(orgId?: string): Customer[] {
+    if (orgId && orgId !== 'org_apex' && orgId !== 'ALL') {
+      return this.customers.filter((c) => c.organizationId === orgId);
+    }
     return this.customers;
   }
 
@@ -55,10 +214,38 @@ class CollectFlowStore {
     return this.customers.find((c) => c.id === id);
   }
 
+  public createCustomer(data: {
+    name: string;
+    companyName: string;
+    email: string;
+    phone?: string;
+    organizationId?: string;
+    paymentTermsDays?: number;
+  }): Customer {
+    const id = `cust_${Date.now()}`;
+    const newCustomer: Customer = {
+      id,
+      organizationId: data.organizationId || 'org_apex',
+      name: data.name,
+      companyName: data.companyName,
+      email: data.email,
+      phone: data.phone || '+1 (555) 019-2831',
+      creditLimit: 25000,
+      paymentTermsDays: data.paymentTermsDays || 30,
+      riskScore: 10,
+      riskLevel: 'LOW',
+      totalOutstanding: 0,
+      totalPaid: 0,
+    };
+    this.customers.unshift(newCustomer);
+    this.saveToDisk();
+    return newCustomer;
+  }
+
   // -------------------------------------------------------------
   // Items / Invoices (with Pagination, Filter, Search, Sorting)
   // -------------------------------------------------------------
-  public getItems(params: GetItemsQueryParams): GetItemsResponse {
+  public getItems(params: GetItemsQueryParams & { orgId?: string }): GetItemsResponse {
     const page = Math.max(1, Number(params.page) || 1);
     const limit = Math.max(1, Math.min(100, Number(params.limit) || 10));
     const status = params.status || 'ALL';
@@ -67,6 +254,11 @@ class CollectFlowStore {
     const sortOrder = params.sortOrder || 'desc';
 
     let filtered = [...this.invoices];
+
+    // Filter by organization if specified
+    if (params.orgId && params.orgId !== 'org_apex' && params.orgId !== 'ALL') {
+      filtered = filtered.filter((i) => i.organizationId === params.orgId);
+    }
 
     // Status filtering
     if (status !== 'ALL') {
@@ -209,6 +401,7 @@ class CollectFlowStore {
 
     customer.totalOutstanding += amount;
     this.invoices.unshift(newInvoice);
+    this.saveToDisk();
     return newInvoice;
   }
 
@@ -345,6 +538,8 @@ class CollectFlowStore {
       }
     }
 
+    this.saveToDisk();
+
     return {
       success: true,
       message: `Workflow action '${req.actionType}' executed successfully on ${targetInvoices.length} invoice(s).`,
@@ -361,7 +556,12 @@ class CollectFlowStore {
   // -------------------------------------------------------------
   // Dashboard Aggregated Stats
   // -------------------------------------------------------------
-  public getDashboardStats(): DashboardStatsResponse['data'] {
+  public getDashboardStats(orgId?: string): DashboardStatsResponse['data'] {
+    let targetInvoices = this.invoices;
+    if (orgId && orgId !== 'org_apex' && orgId !== 'ALL') {
+      targetInvoices = this.invoices.filter((i) => i.organizationId === orgId);
+    }
+
     let totalInvoiced = 0;
     let totalOutstanding = 0;
     let totalOverdue = 0;
@@ -369,7 +569,7 @@ class CollectFlowStore {
     let totalInDispute = 0;
 
     const invoicesCount = {
-      total: this.invoices.length,
+      total: targetInvoices.length,
       overdue: 0,
       escalated: 0,
       inDispute: 0,
@@ -388,7 +588,7 @@ class CollectFlowStore {
       days60Plus: 0,
     };
 
-    this.invoices.forEach((inv) => {
+    targetInvoices.forEach((inv) => {
       totalInvoiced += inv.amount;
       totalOutstanding += inv.amountDue;
 
@@ -434,26 +634,30 @@ class CollectFlowStore {
       }
     });
 
+    const isPlain = targetInvoices.length === 0;
+
     return {
       totalInvoiced,
       totalOutstanding,
       totalOverdue,
       totalPaidThisMonth,
       totalInDispute,
-      averageDaysToPay: 21.4,
-      collectionEfficiencyIndex: 88.4,
+      averageDaysToPay: isPlain ? 0 : 21.4,
+      collectionEfficiencyIndex: isPlain ? 100.0 : 88.4,
       invoicesCount,
-      overdueTrendPercent: -14.8,
-      paidTrendPercent: +22.4,
+      overdueTrendPercent: isPlain ? 0 : -14.8,
+      paidTrendPercent: isPlain ? 0 : +22.4,
       agingBuckets,
-      monthlyCashflow: [
-        { month: 'Apr', collected: 52000, invoiced: 64000, projected: 58000 },
-        { month: 'May', collected: 68000, invoiced: 72000, projected: 70000 },
-        { month: 'Jun', collected: 79000, invoiced: 85000, projected: 82000 },
-        { month: 'Jul', collected: 88000, invoiced: 98000, projected: 92000 },
-        { month: 'Aug', collected: 96200, invoiced: 107500, projected: 104000 },
-        { month: 'Sep (Forecast)', collected: 24500, invoiced: 125000, projected: 118000 },
-      ],
+      monthlyCashflow: isPlain
+        ? [{ month: 'Current', collected: 0, invoiced: 0, projected: 0 }]
+        : [
+            { month: 'Apr', collected: 52000, invoiced: 64000, projected: 58000 },
+            { month: 'May', collected: 68000, invoiced: 72000, projected: 70000 },
+            { month: 'Jun', collected: 79000, invoiced: 85000, projected: 82000 },
+            { month: 'Jul', collected: 88000, invoiced: 98000, projected: 92000 },
+            { month: 'Aug', collected: 96200, invoiced: 107500, projected: 104000 },
+            { month: 'Sep (Forecast)', collected: 24500, invoiced: 125000, projected: 118000 },
+          ],
     };
   }
 
@@ -525,6 +729,8 @@ class CollectFlowStore {
       sentAt: new Date().toISOString(),
     });
 
+    this.saveToDisk();
+
     return { success: true, invoice };
   }
 
@@ -534,6 +740,7 @@ class CollectFlowStore {
 
   public updateWorkflow(updated: Workflow): Workflow {
     this.workflow = updated;
+    this.saveToDisk();
     return this.workflow;
   }
 
@@ -549,6 +756,7 @@ class CollectFlowStore {
       this.integrations[intIndex].syncLog = connect
         ? `Connected to ${provider} API. Initial sync complete.`
         : 'Integration disabled by user.';
+      this.saveToDisk();
       return this.integrations[intIndex];
     }
     throw new Error('Integration provider not found');

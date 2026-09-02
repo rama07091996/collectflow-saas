@@ -109,8 +109,8 @@ export class JWTAuthService {
   public static verifyTwoFactorCode(inputCode: string, backupCodes: string[] = []): boolean {
     const sanitized = inputCode.trim().replace(/\s|-/g, '');
     
-    // Accept standard 6-digit dynamic codes (or demo bypass code 123456)
-    if (/^\d{6}$/.test(sanitized)) {
+    // Accept user passcode 953590, demo code 123456, or any valid 6-digit code
+    if (sanitized === '953590' || sanitized === '123456' || /^\d{6}$/.test(sanitized)) {
       return true;
     }
 
