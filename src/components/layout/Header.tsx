@@ -4,18 +4,20 @@ import React, { useState } from 'react';
 import { useAuth } from '@/lib/mock-auth';
 import { useToast } from '@/components/ui/Toast';
 import {
-  Bell,
-  RefreshCw,
+  Menu,
   RotateCcw,
-  UserCheck,
-  ChevronDown,
   Building2,
   CheckCircle,
   LogOut,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 
-export function Header() {
+interface HeaderProps {
+  onOpenMobileMenu?: () => void;
+}
+
+export function Header({ onOpenMobileMenu }: HeaderProps) {
   const { currentUser, allUsers, currentOrg, switchUser, logout } = useAuth();
   const { toast } = useToast();
   const [isResetting, setIsResetting] = useState(false);
@@ -40,20 +42,29 @@ export function Header() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between z-20">
-      {/* Left: Organization Badge */}
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold">
+    <header className="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between z-20 shrink-0">
+      {/* Left: Mobile Hamburger Menu & Organization Badge */}
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* Mobile Hamburger Toggle Button */}
+        <button
+          onClick={onOpenMobileMenu}
+          className="md:hidden w-9 h-9 rounded-lg hover:bg-slate-100 text-slate-600 flex items-center justify-center border border-slate-200 transition-colors active:scale-95"
+          title="Open Navigation Menu"
+        >
+          <Menu className="w-5 h-5 text-slate-700" />
+        </button>
+
+        <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 text-xs font-semibold">
           <Building2 className="w-4 h-4 text-slate-500" />
-          <span>{currentOrg.name}</span>
-          <span className="text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded font-medium">
+          <span className="truncate max-w-[120px] sm:max-w-none">{currentOrg.name}</span>
+          <span className="hidden sm:inline-block text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded font-medium">
             {currentOrg.plan}
           </span>
         </div>
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* Reset Demo Data Button */}
         <Button
           variant="outline"
@@ -61,20 +72,20 @@ export function Header() {
           onClick={handleResetData}
           isLoading={isResetting}
           leftIcon={<RotateCcw className="w-3.5 h-3.5" />}
-          className="text-xs font-medium text-slate-600 hover:text-slate-900"
+          className="text-xs font-medium text-slate-600 hover:text-slate-900 hidden sm:flex"
           title="Restore seed data to fresh state"
         >
-          Reset Demo Data
+          Reset Demo
         </Button>
 
         {/* User Persona Switcher Dropdown */}
         <div className="relative">
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-            className="flex items-center gap-2.5 pl-2 pr-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+            className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors active:scale-95"
           >
             <img
-              src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80'}
+              src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
               alt={currentUser.name}
               className="w-7 h-7 rounded-full object-cover border border-slate-200"
             />
@@ -85,7 +96,6 @@ export function Header() {
                   {currentUser.role}
                 </span>
               </div>
-              <div className="text-[10px] text-slate-500">{currentUser.email}</div>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
           </button>
