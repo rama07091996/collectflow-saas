@@ -15,6 +15,9 @@ import {
   ShieldCheck,
   Zap,
   Check,
+  CreditCard,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react';
 
 export default function RegisterPage() {
@@ -24,15 +27,18 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<'$100/User' | '$999/Organization'>('$100/User');
+  const [payNowWithStripe, setPayNowWithStripe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [approvalInfo, setApprovalInfo] = useState<any>(null);
+  const [paymentReceipt, setPaymentReceipt] = useState<any>(null);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      // 1. Register user credentials in database
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -47,19 +53,42 @@ export default function RegisterPage() {
 
       const data = await res.json();
 
-      if (data.success) {
-        toast('Registration saved to database!', 'success');
-        setApprovalInfo(data.data);
-        setIsSubmitted(true);
-      } else {
+      if (!data.success) {
         throw new Error(data.error || 'Failed to submit registration');
       }
+
+      // 2. If user chose Pay Now via Stripe, process checkout & store payment in MongoDB
+      if (payNowWithStripe) {
+        const payRes = await fetch('/api/payments/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'SIGNUP_PLAN',
+            plan: selectedPlan,
+            userEmail: email,
+            userName: fullName,
+            paymentMethod: 'STRIPE_CHECKOUT',
+          }),
+        });
+
+        const payData = await payRes.json();
+        if (payData.success) {
+          setPaymentReceipt(payData.data);
+          toast(`Payment of $${payData.data.amount} USD processed and saved to MongoDB!`, 'success');
+        }
+      }
+
+      toast('Registration and credentials stored in DB!', 'success');
+      setApprovalInfo(data.data);
+      setIsSubmitted(true);
     } catch (err: any) {
       toast(err.message || 'Registration failed', 'error');
     } finally {
       setIsLoading(false);
     }
   };
+
+  const planPrice = selectedPlan === '$999/Organization' ? 999 : 100;
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -78,7 +107,7 @@ export default function RegisterPage() {
           Create Your Workspace Account
         </h2>
         <p className="mt-1 text-xs text-slate-400">
-          All signups are stored in DB and subject to Admin Verification
+          Integrated with Stripe Gateway & MongoDB Cloud Database
         </p>
       </div>
 
@@ -168,13 +197,34 @@ export default function RegisterPage() {
                 required
               />
 
+              {/* Payment Gateway Activation Option */}
+              <div className="p-3.5 bg-emerald-950/30 rounded-xl border border-emerald-500/30 space-y-2">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={payNowWithStripe}
+                    onChange={(e) => setPayNowWithStripe(e.target.checked)}
+                    className="mt-0.5 rounded border-slate-700 text-emerald-500 focus:ring-emerald-500/20 bg-slate-900"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Activate & Pay via Stripe Gateway (${planPrice} USD)</span>
+                    </span>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Process payment via Stripe Card/ACH checkout and save transaction record to MongoDB.
+                    </p>
+                  </div>
+                </label>
+              </div>
+
               <div className="p-3 bg-slate-900/60 rounded-xl border border-slate-800 text-[11px] text-slate-300 space-y-1">
                 <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Admin-Gated Security Approval</span>
+                  <span>Admin-Gated Security & MongoDB Storage</span>
                 </div>
                 <p className="text-slate-400">
-                  New signup credentials are encrypted in DB and queued for Admin Approval before access is granted.
+                  All accounts and payment receipts are stored securely in MongoDB and verified before access.
                 </p>
               </div>
 
@@ -183,9 +233,11 @@ export default function RegisterPage() {
                 variant="primary"
                 size="lg"
                 isLoading={isLoading}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs py-2.5 shadow-lg shadow-emerald-500/20"
+                leftIcon={payNowWithStripe ? <CreditCard className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                rightIcon={<ArrowRight className="w-4 h-4" />}
+                className="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs py-2.5 shadow-lg shadow-emerald-500/20"
               >
-                Submit Registration for Approval
+                {payNowWithStripe ? `Pay $${planPrice} & Complete Registration` : 'Submit Registration for Free Trial'}
               </Button>
             </form>
           ) : (
@@ -194,19 +246,36 @@ export default function RegisterPage() {
                 <CheckCircle2 className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Registration Submitted!</h3>
+                <h3 className="text-lg font-bold text-white">Registration & Payment Complete!</h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Your account for <strong className="text-emerald-400">{email}</strong> has been stored in the database with status: <span className="text-amber-400 font-bold">PENDING APPROVAL</span>.
+                  Your account for <strong className="text-emerald-400">{email}</strong> and payment details have been saved in MongoDB.
                 </p>
               </div>
+
+              {/* Payment Receipt Banner if Paid */}
+              {paymentReceipt && (
+                <div className="p-3.5 bg-emerald-950/40 rounded-xl border border-emerald-500/30 text-left text-xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Stripe Payment Confirmed</span>
+                    </span>
+                    <span className="font-mono text-emerald-400 font-bold">${paymentReceipt.amount} USD</span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 space-y-0.5">
+                    <div>Payment Intent: <code className="text-slate-300">{paymentReceipt.paymentIntentId}</code></div>
+                    <div>Database: <span className="text-emerald-400 font-semibold">{paymentReceipt.database}</span></div>
+                  </div>
+                </div>
+              )}
 
               <div className="p-3.5 bg-slate-900 rounded-xl border border-slate-800 text-left text-xs space-y-2">
                 <div className="text-slate-300 font-semibold flex items-center gap-1.5">
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Admin Notice Sent:</span>
+                  <span>Admin Activation Notice:</span>
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  An activation approval request was dispatched to Organization Admin (<code>ramamkrishna.anandrk@gmail.com</code>).
+                  An activation notice was dispatched to Admin (<code>ramamkrishna.anandrk@gmail.com</code>).
                 </p>
 
                 {approvalInfo?.adminApprovalUrl && (

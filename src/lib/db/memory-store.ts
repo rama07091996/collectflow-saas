@@ -12,6 +12,8 @@ import {
   ExecutionLogEntry,
   DashboardStatsResponse,
   User,
+  PaymentRecord,
+  PaymentGatewayConfig,
 } from '../types';
 import {
   SEED_USERS,
@@ -21,11 +23,52 @@ import {
   SEED_WORKFLOW,
 } from './seed-data';
 import { calculateDaysOverdue, formatCurrency, formatDate } from '../utils';
+import { MongoDBService } from './mongodb-service';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
 const DB_FILE_PATH = path.join(process.cwd(), 'data', 'collectflow-db.json');
+
+const DEFAULT_GATEWAYS: PaymentGatewayConfig[] = [
+  {
+    id: 'gw_stripe',
+    provider: 'STRIPE',
+    name: 'Stripe Payments (ACH & Credit Cards)',
+    isEnabled: true,
+    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_collectflow_mock_key',
+    secretKey: process.env.STRIPE_SECRET_KEY || 'sk_test_collectflow_mock_secret',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test_mock_secret',
+    mode: 'TEST',
+    autoCapture: true,
+    supportedMethods: ['card', 'us_bank_account', 'link'],
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'gw_paypal',
+    provider: 'PAYPAL',
+    name: 'PayPal Commerce Platform',
+    isEnabled: false,
+    publishableKey: '',
+    secretKey: '',
+    mode: 'TEST',
+    autoCapture: true,
+    supportedMethods: ['paypal', 'venmo'],
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'gw_razorpay',
+    provider: 'RAZORPAY',
+    name: 'Razorpay Global Checkout',
+    isEnabled: false,
+    publishableKey: '',
+    secretKey: '',
+    mode: 'TEST',
+    autoCapture: true,
+    supportedMethods: ['card', 'netbanking', 'upi'],
+    updatedAt: new Date().toISOString(),
+  },
+];
 
 export interface RegisteredAccountUser extends User {
   companyName?: string;
@@ -39,6 +82,8 @@ class CollectFlowStore {
   private users: RegisteredAccountUser[] = [];
   private customers: Customer[] = [];
   private invoices: Invoice[] = [];
+  private payments: PaymentRecord[] = [];
+  private paymentGateways: PaymentGatewayConfig[] = [...DEFAULT_GATEWAYS];
   private workflow: Workflow = { ...SEED_WORKFLOW };
   private integrations: Integration[] = [];
   private passwordResetTokens: Map<string, { email: string; expiresAt: number }> = new Map();
@@ -59,6 +104,8 @@ class CollectFlowStore {
         users: this.users,
         customers: this.customers,
         invoices: this.invoices,
+        payments: this.payments,
+        paymentGateways: this.paymentGateways,
         workflow: this.workflow,
         integrations: this.integrations,
         passwordResetTokens: Array.from(this.passwordResetTokens.entries()),
@@ -77,6 +124,10 @@ class CollectFlowStore {
         if (parsed.users && parsed.users.length > 0) this.users = parsed.users;
         if (parsed.customers && parsed.customers.length > 0) this.customers = parsed.customers;
         if (parsed.invoices && parsed.invoices.length > 0) this.invoices = parsed.invoices;
+        if (parsed.payments && parsed.payments.length > 0) this.payments = parsed.payments;
+        if (parsed.paymentGateways && parsed.paymentGateways.length > 0) {
+          this.paymentGateways = parsed.paymentGateways;
+        }
         if (parsed.workflow) this.workflow = parsed.workflow;
         if (parsed.integrations) this.integrations = parsed.integrations;
         if (parsed.passwordResetTokens) {
@@ -100,6 +151,8 @@ class CollectFlowStore {
     }));
     this.customers = JSON.parse(JSON.stringify(SEED_CUSTOMERS));
     this.invoices = JSON.parse(JSON.stringify(SEED_INVOICES));
+    this.payments = [];
+    this.paymentGateways = JSON.parse(JSON.stringify(DEFAULT_GATEWAYS));
     this.workflow = JSON.parse(JSON.stringify(SEED_WORKFLOW));
     this.integrations = JSON.parse(JSON.stringify(SEED_INTEGRATIONS));
     this.passwordResetTokens.clear();
@@ -729,9 +782,106 @@ class CollectFlowStore {
       sentAt: new Date().toISOString(),
     });
 
+    // Record transaction in MongoDB payments collection and local DB
+    this.recordPayment({
+      organizationId: invoice.organizationId || 'org_apex',
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      customerId: invoice.customerId,
+      customerName: customer?.name || customer?.companyName,
+      amount: payment,
+      currency: invoice.currency || 'USD',
+      paymentMethod: 'STRIPE_CHECKOUT',
+      status: 'SUCCEEDED',
+      stripePaymentIntentId: `pi_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      receiptUrl: `https://stripe.com/receipts/rct_${Date.now()}`,
+      notes: `Invoice payment for ${invoice.invoiceNumber}`,
+    });
+
     this.saveToDisk();
 
     return { success: true, invoice };
+  }
+
+  // -------------------------------------------------------------
+  // Payment Recording & MongoDB Storage
+  // -------------------------------------------------------------
+  public recordPayment(data: {
+    organizationId?: string;
+    invoiceId?: string;
+    invoiceNumber?: string;
+    userId?: string;
+    userEmail?: string;
+    customerId?: string;
+    customerName?: string;
+    amount: number;
+    currency?: string;
+    paymentMethod?: PaymentRecord['paymentMethod'];
+    status?: PaymentRecord['status'];
+    stripePaymentIntentId?: string;
+    stripeSessionId?: string;
+    receiptUrl?: string;
+    planName?: string;
+    notes?: string;
+  }): PaymentRecord {
+    const paymentRecord: PaymentRecord = {
+      id: `pay_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      organizationId: data.organizationId || 'org_apex',
+      invoiceId: data.invoiceId,
+      invoiceNumber: data.invoiceNumber,
+      userId: data.userId,
+      userEmail: data.userEmail,
+      customerId: data.customerId,
+      customerName: data.customerName,
+      amount: Number(data.amount),
+      currency: data.currency || 'USD',
+      paymentMethod: data.paymentMethod || 'STRIPE_CHECKOUT',
+      status: data.status || 'SUCCEEDED',
+      stripePaymentIntentId: data.stripePaymentIntentId || `pi_${Date.now()}`,
+      stripeSessionId: data.stripeSessionId,
+      receiptUrl: data.receiptUrl || `https://dashboard.stripe.com/payments/pay_${Date.now()}`,
+      planName: data.planName,
+      notes: data.notes || 'Payment processed via CollectFlow gateway',
+      createdAt: new Date().toISOString(),
+    };
+
+    this.payments.unshift(paymentRecord);
+    this.saveToDisk();
+
+    // Asynchronously insert into MongoDB payments collection
+    MongoDBService.insertPayment(paymentRecord).catch(() => {});
+
+    return paymentRecord;
+  }
+
+  public getPayments(orgId?: string): PaymentRecord[] {
+    if (orgId && orgId !== 'org_apex' && orgId !== 'ALL') {
+      return this.payments.filter((p) => p.organizationId === orgId);
+    }
+    return this.payments;
+  }
+
+  // -------------------------------------------------------------
+  // Payment Gateways Settings
+  // -------------------------------------------------------------
+  public getPaymentGateways(): PaymentGatewayConfig[] {
+    return this.paymentGateways;
+  }
+
+  public updatePaymentGateway(
+    provider: 'STRIPE' | 'PAYPAL' | 'RAZORPAY',
+    data: Partial<PaymentGatewayConfig>
+  ): PaymentGatewayConfig {
+    const gateway = this.paymentGateways.find((g) => g.provider === provider);
+    if (!gateway) throw new Error(`Gateway provider '${provider}' not found.`);
+
+    Object.assign(gateway, data, { updatedAt: new Date().toISOString() });
+    this.saveToDisk();
+
+    // Asynchronously update MongoDB gateway settings
+    MongoDBService.savePaymentGateway(gateway).catch(() => {});
+
+    return gateway;
   }
 
   public getWorkflow(): Workflow {

@@ -1,5 +1,5 @@
 import clientPromise from '@/lib/mongodb';
-import { Customer, Invoice, Workflow, User } from '@/lib/types';
+import { Customer, Invoice, Workflow, User, PaymentRecord, PaymentGatewayConfig } from '@/lib/types';
 import { Db } from 'mongodb';
 
 export class MongoDBService {
@@ -78,6 +78,74 @@ export class MongoDBService {
       return await db.collection('customers').insertOne({ ...customer });
     } catch (err: any) {
       console.warn('MongoDB insertCustomer standby:', err.message);
+      return null;
+    }
+  }
+
+  // -------------------------------------------------------------
+  // PAYMENTS COLLECTION (MongoDB Payment Storage)
+  // -------------------------------------------------------------
+  public static async insertPayment(payment: PaymentRecord): Promise<any> {
+    try {
+      const db = await this.getDb();
+      const result = await db.collection('payments').insertOne({
+        ...payment,
+        createdAt: payment.createdAt || new Date().toISOString(),
+      });
+      return result;
+    } catch (err: any) {
+      console.warn('MongoDB insertPayment standby:', err.message);
+      return null;
+    }
+  }
+
+  public static async findPayments(query: any = {}): Promise<PaymentRecord[]> {
+    try {
+      const db = await this.getDb();
+      const docs = await db
+        .collection('payments')
+        .find(query)
+        .sort({ createdAt: -1 })
+        .toArray();
+      return docs as unknown as PaymentRecord[];
+    } catch {
+      return [];
+    }
+  }
+
+  public static async findPaymentById(id: string): Promise<PaymentRecord | null> {
+    try {
+      const db = await this.getDb();
+      const doc = await db.collection('payments').findOne({ id });
+      return doc as unknown as PaymentRecord | null;
+    } catch {
+      return null;
+    }
+  }
+
+  // -------------------------------------------------------------
+  // PAYMENT GATEWAYS CONFIGURATION
+  // -------------------------------------------------------------
+  public static async getPaymentGateways(): Promise<PaymentGatewayConfig[]> {
+    try {
+      const db = await this.getDb();
+      const docs = await db.collection('payment_gateways').find({}).toArray();
+      return docs as unknown as PaymentGatewayConfig[];
+    } catch {
+      return [];
+    }
+  }
+
+  public static async savePaymentGateway(config: PaymentGatewayConfig): Promise<any> {
+    try {
+      const db = await this.getDb();
+      return await db.collection('payment_gateways').updateOne(
+        { provider: config.provider },
+        { $set: { ...config, updatedAt: new Date().toISOString() } },
+        { upsert: true }
+      );
+    } catch (err: any) {
+      console.warn('MongoDB savePaymentGateway standby:', err.message);
       return null;
     }
   }

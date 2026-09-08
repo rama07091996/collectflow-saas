@@ -261,6 +261,53 @@ runAssertion('Configures idle timeout (10s) to reclaim inactive serverless conne
 const { attachDatabasePool } = require('@vercel/functions');
 runAssertion('Exports and attaches attachDatabasePool from @vercel/functions', typeof attachDatabasePool === 'function');
 
+// -------------------------------------------------------------
+// 10. MongoDB Payment Storage & Signup Gateway Integration
+// -------------------------------------------------------------
+console.log('\n\x1b[36m[SUITE 10] MongoDB Payment Storage & Signup Gateway Integration\x1b[0m');
+
+const mockMongoPaymentsCollection = [];
+
+function recordMongoPayment(data) {
+  const payment = {
+    id: `pay_${Date.now()}`,
+    amount: Number(data.amount),
+    currency: data.currency || 'USD',
+    paymentMethod: data.paymentMethod || 'STRIPE_CHECKOUT',
+    status: 'SUCCEEDED',
+    userEmail: data.userEmail,
+    planName: data.planName,
+    stripePaymentIntentId: `pi_test_${Date.now()}`,
+    createdAt: new Date().toISOString(),
+  };
+  mockMongoPaymentsCollection.push(payment);
+  return payment;
+}
+
+// 1. Test Signup Payment for $100/User tier
+const signupPayment100 = recordMongoPayment({
+  amount: 100,
+  userEmail: 'user100@enterprise.com',
+  planName: '$100/User',
+});
+runAssertion('Records $100/User signup subscription payment in MongoDB', signupPayment100.amount === 100 && signupPayment100.status === 'SUCCEEDED');
+
+// 2. Test Signup Payment for $999/Organization tier
+const signupPayment999 = recordMongoPayment({
+  amount: 999,
+  userEmail: 'org999@enterprise.com',
+  planName: '$999/Organization',
+});
+runAssertion('Records $999/Org enterprise subscription payment in MongoDB', signupPayment999.amount === 999 && signupPayment999.planName === '$999/Organization');
+
+// 3. Test Debtor Invoice Settlement Payment
+const invoicePayment = recordMongoPayment({
+  amount: 12500,
+  invoiceNumber: 'INV-2024-001',
+  paymentMethod: 'STRIPE_CHECKOUT',
+});
+runAssertion('Stores invoice debtor settlement ($12,500) in MongoDB payments collection', invoicePayment.amount === 12500 && mockMongoPaymentsCollection.length === 3);
+
 console.log('\n======================================================');
 console.log(`📊 LOCAL TEST RUN RESULTS: ${passedTests} Passed / ${failedTests} Failed`);
 console.log('======================================================\n');

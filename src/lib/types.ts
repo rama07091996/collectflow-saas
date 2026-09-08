@@ -271,3 +271,41 @@ export interface TriggerActionResponse {
     updatedInvoices: Invoice[];
   };
 }
+
+// -------------------------------------------------------------
+// Payment Gateway & MongoDB Payment Storage
+// -------------------------------------------------------------
+export interface PaymentRecord {
+  id: string;
+  organizationId: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  userId?: string;
+  userEmail?: string;
+  customerId?: string;
+  customerName?: string;
+  amount: number;
+  currency: string;
+  paymentMethod: 'STRIPE_CHECKOUT' | 'ACH_TRANSFER' | 'CREDIT_CARD' | 'PAYPAL' | 'RAZORPAY';
+  status: 'SUCCEEDED' | 'PENDING' | 'FAILED' | 'REFUNDED';
+  stripePaymentIntentId?: string;
+  stripeSessionId?: string;
+  receiptUrl?: string;
+  planName?: string;
+  notes?: string;
+  createdAt: string;
+}
+
+export interface PaymentGatewayConfig {
+  id: string;
+  provider: 'STRIPE' | 'PAYPAL' | 'RAZORPAY';
+  name: string;
+  isEnabled: boolean;
+  publishableKey: string;
+  secretKey: string;
+  webhookSecret?: string;
+  mode: 'TEST' | 'LIVE';
+  autoCapture: boolean;
+  supportedMethods: string[];
+  updatedAt: string;
+}
